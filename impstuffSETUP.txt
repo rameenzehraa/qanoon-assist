@@ -1,0 +1,57 @@
+------------------------------------------------------
+superuser creation for testing
+------------------------------------------------------
+python manage.py createsuperuser
+
+Follow the prompts:
+```
+Username: admin
+Email address: admin@qanoonassist.com
+User type (citizen/lawyer/admin): admin
+Phone number: +923001234567
+Password: ********
+Password (again): ********
+Superuser created successfully.
+
+------------------------------------------------------
+.env.example 
+------------------------------------------------------
+# Database Configuration
+DB_NAME=qanoon_assist
+DB_USER=qanoon_user
+DB_PASSWORD=QanoonSecure@2025
+DB_HOST=localhost
+DB_PORT=5432
+
+# Django Secret Key (generate a new one for production)
+SECRET_KEY=django-insecure-your-secret-key-here
+
+# Debug Mode
+DEBUG=True
+
+------------------------------------------------------
+database creation in postgresql
+------------------------------------------------------
+CREATE DATABASE qanoon_assist;
+CREATE USER qanoon_user WITH PASSWORD 'your_secure_password';
+ALTER ROLE qanoon_user SET client_encoding TO 'utf8';
+ALTER ROLE qanoon_user SET default_transaction_isolation TO 'read committed';
+ALTER ROLE qanoon_user SET timezone TO 'Asia/Karachi';
+GRANT ALL PRIVILEGES ON DATABASE qanoon_assist TO qanoon_user;
+
+
+
+------------------------------------------------------
+verify working
+------------------------------------------------------
+venv\Scripts\activate
+python manage.py makemigrations
+python manage.py migrate
+python manage.py runserver
+deactivate
+npm start
+http://127.0.0.1:8000/admin/
+del users\migrations\0*.py
+del cases\migrations\0*.py  
+del messaging\migrations\0*.py
+del knowledge_base\migrations\0*.py
