@@ -6,6 +6,7 @@ import CssBaseline from '@mui/material/CssBaseline';
 import { AuthProvider } from './contexts/AuthContext';
 import Navbar from './components/common/Navbar';
 import ProtectedRoute from './components/common/ProtectedRoute';
+import MessagesPage from './pages/MessagesPage';
 
 // Pages
 import LoginPage from './pages/auth/LoginPage';
@@ -45,6 +46,16 @@ function App() {
               element={
                 <ProtectedRoute>
                   <DashboardPage />
+                </ProtectedRoute>
+              } 
+            />
+            
+            {/* ADD THIS - Messages Route */}
+            <Route 
+              path="/messages/:caseId" 
+              element={
+                <ProtectedRoute>
+                  <MessagesPage />
                 </ProtectedRoute>
               } 
             />

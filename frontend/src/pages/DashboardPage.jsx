@@ -1,7 +1,9 @@
 import React from 'react';
-import { Container, Typography, Paper, Box, Chip } from '@mui/material';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
+import CitizenDashboard from '../components/common/dashboard/CitizenDashboard';
+import LawyerDashboard from '../components/common/dashboard/LawyerDashboard';
+import { Container, Typography, Paper, Chip } from '@mui/material';
 
 function DashboardPage() {
     const { user, isAuthenticated, isCitizen, isLawyer, isAdmin } = useAuth();
@@ -10,131 +12,69 @@ function DashboardPage() {
         return <Navigate to="/login" />;
     }
 
-    return (
-        <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-            <Paper 
-                elevation={6} 
-                sx={{ 
-                    p: 4,
-                    background: 'linear-gradient(135deg, #2c3e50 0%, #34495e 100%)',
-                    color: 'white',
-                    border: '1px solid #34495e'
-                }}
-            >
-                <Typography 
-                    variant="h4" 
-                    gutterBottom 
-                    sx={{ 
-                        fontWeight: 'bold',
-                        textShadow: '0 2px 4px rgba(0,0,0,0.3)'
-                    }}
-                >
-                    Welcome, {user?.first_name || user?.username}!
-                </Typography>
-                
-                <Chip 
-                    label={user?.user_type?.toUpperCase()}
-                    sx={{
-                        backgroundColor: '#ecf0f1',
-                        color: '#2c3e50',
-                        fontWeight: 'bold',
-                        fontSize: '0.8rem'
-                    }}
-                />
-            </Paper>
+    // Show appropriate dashboard based on user type
+    if (isCitizen) {
+        return <CitizenDashboard />;
+    }
 
-            <Paper 
-                elevation={4} 
-                sx={{ 
-                    p: 4, 
-                    mt: 3,
-                    background: '#ffffff',
-                    border: '1px solid #ecf0f1'
-                }}
-            >
-                <Box sx={{ mb: 4 }}>
-                    <Typography 
-                        variant="h6" 
+    if (isLawyer) {
+        // Check if lawyer is verified
+        if (!user?.profile?.is_verified) {
+            return (
+                <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+                    <Paper 
+                        elevation={6} 
                         sx={{ 
-                            color: '#2c3e50', 
-                            mb: 2,
-                            fontWeight: 'bold'
+                            p: 6,
+                            textAlign: 'center',
+                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                            color: 'white'
                         }}
                     >
-                        Account Information
-                    </Typography>
-                    <Typography variant="body1" sx={{ color: '#7f8c8d', mb: 1 }}>
-                        <strong>Email:</strong> {user?.email || 'Not provided'}
-                    </Typography>
-                    <Typography variant="body1" sx={{ color: '#7f8c8d', mb: 1 }}>
-                        <strong>Phone:</strong> {user?.phone_number || 'Not provided'}
+                        <Typography variant="h4" gutterBottom sx={{ fontWeight: 'bold' }}>
+                            Account Pending Verification
+                        </Typography>
+                        <Typography variant="body1" sx={{ mt: 2, mb: 3 }}>
+                            Your lawyer account is currently under review by our admin team.
+                            You will be notified once your account is verified.
+                        </Typography>
+                        <Chip 
+                            label="PENDING VERIFICATION"
+                            sx={{
+                                backgroundColor: '#fff3cd',
+                                color: '#856404',
+                                fontWeight: 'bold',
+                                fontSize: '1rem'
+                            }}
+                        />
+                    </Paper>
+                </Container>
+            );
+        }
+        return <LawyerDashboard />;
+    }
+
+    if (isAdmin) {
+        return (
+            <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+                <Paper elevation={6} sx={{ p: 4 }}>
+                    <Typography variant="h4" gutterBottom sx={{ fontWeight: 'bold', color: '#2c3e50' }}>
+                        Admin Dashboard
                     </Typography>
                     <Typography variant="body1" sx={{ color: '#7f8c8d' }}>
-                        <strong>User Type:</strong> {user?.user_type}
+                        Manage lawyers, verify accounts, and oversee the platform.
                     </Typography>
-                </Box>
+                </Paper>
+            </Container>
+        );
+    }
 
-                <Box>
-                    {isCitizen && (
-                        <>
-                            <Typography 
-                                variant="h6" 
-                                sx={{ 
-                                    color: '#2c3e50', 
-                                    mb: 2,
-                                    fontWeight: 'bold'
-                                }}
-                            >
-                                Citizen Dashboard
-                            </Typography>
-                            <Typography variant="body1" sx={{ color: '#7f8c8d' }}>
-                                Here you can browse lawyers, request cases, and manage your cases.
-                            </Typography>
-                        </>
-                    )}
-
-                    {isLawyer && (
-                        <>
-                            <Typography 
-                                variant="h6" 
-                                sx={{ 
-                                    color: '#2c3e50', 
-                                    mb: 2,
-                                    fontWeight: 'bold'
-                                }}
-                            >
-                                Lawyer Dashboard
-                            </Typography>
-                            {user?.profile?.is_verified ? (
-                                <Typography variant="body1" sx={{ color: '#7f8c8d' }}>
-                                    Your account is verified! You can now accept cases.
-                                </Typography>
-                            ) : (
-                                <Typography variant="body1" sx={{ color: '#e74c3c' }}>
-                                    Your account is pending verification by admin.
-                                </Typography>
-                            )}
-                        </>
-                    )}
-
-                    {isAdmin && (
-                        <>
-                            <Typography 
-                                variant="h6" 
-                                sx={{ 
-                                    color: '#2c3e50', 
-                                    mb: 2,
-                                    fontWeight: 'bold'
-                                }}
-                            >
-                                Admin Dashboard
-                            </Typography>
-                            <Typography variant="body1" sx={{ color: '#7f8c8d' }}>
-                                Manage lawyers, verify accounts, and oversee the platform.
-                            </Typography>
-                        </>
-                    )}
-                </Box>
+    return (
+        <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+            <Paper elevation={6} sx={{ p: 4 }}>
+                <Typography variant="h4" gutterBottom>
+                    Welcome, {user?.first_name || user?.username}!
+                </Typography>
             </Paper>
         </Container>
     );

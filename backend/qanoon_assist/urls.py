@@ -22,6 +22,11 @@ urlpatterns = [
     
     # API routes
     path('api/', include(router.urls)),
+
+    path('api/auth/', include('users.urls')),
+    path('api/', include('users.urls')),  # For lawyers, specialties endpoints
+    path('api/', include('cases.urls')),  # ADD THIS LINE
+    path('api/', include('messaging.urls')),
     
     # Authentication
     path('api/auth/login/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),

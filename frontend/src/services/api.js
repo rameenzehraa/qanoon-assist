@@ -116,3 +116,50 @@ export const adminAPI = {
 export const specialtyAPI = {
     getAll: () => api.get('/specialties/'),
 };
+
+// Case Request API
+export const caseRequestAPI = {
+    // Get all case requests (for current user)
+    getAll: () => api.get('/case-requests/'),
+    
+    // Get single case request
+    getById: (id) => api.get(`/case-requests/${id}/`),
+    
+    // Create new case request (citizen only)
+    create: (data) => api.post('/case-requests/', data),
+    
+    // Lawyer actions
+    accept: (id, message) => api.post(`/case-requests/${id}/accept/`, { message }),
+    reject: (id, message) => api.post(`/case-requests/${id}/reject/`, { message }),
+    startProgress: (id) => api.post(`/case-requests/${id}/start_progress/`),
+    complete: (id) => api.post(`/case-requests/${id}/complete/`),
+};
+
+// Messaging API
+// Messaging API
+export const messageAPI = {
+    // Get all messages for a case request
+    getByCaseRequest: (caseRequestId) => api.get(`/messages/by_case/?case_request_id=${caseRequestId}`),
+    
+    // Send a new message with optional file
+    send: (data) => {
+        // If there's a file, use FormData
+        if (data.attachment) {
+            const formData = new FormData();
+            formData.append('case_request', data.case_request);
+            formData.append('content', data.content);
+            formData.append('attachment', data.attachment);
+            
+            return api.post('/messages/', formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
+            });
+        }
+        // Otherwise send as JSON
+        return api.post('/messages/', data);
+    },
+    
+    // Get all messages (for current user)
+    getAll: () => api.get('/messages/'),
+};
