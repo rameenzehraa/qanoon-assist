@@ -10,10 +10,12 @@ from .views import (
     LawyerViewSet,
     LawyerSpecialtyViewSet,
 )
+from .admin_views import AdminDashboardViewSet  # ⬅️ ADD THIS IMPORT
 
 router = DefaultRouter()
 router.register(r'lawyers', LawyerViewSet, basename='lawyer')
 router.register(r'specialties', LawyerSpecialtyViewSet, basename='specialty')
+router.register(r'admin/dashboard', AdminDashboardViewSet, basename='admin-dashboard')  # ⬅️ ADD THIS LINE
 
 urlpatterns = [
     # Authentication

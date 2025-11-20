@@ -22,6 +22,8 @@ function CitizenDashboard() {
         try {
             setLoading(true);
             const response = await caseRequestAPI.getAll();
+            console.log('🔍 Case Requests Data:', response.data); // ADD THIS LINE
+            console.log('🔍 First Request:', response.data[0]); // ADD THIS LINE TOO
             setRequests(response.data);
         } catch (error) {
             console.error('Error fetching requests:', error);
@@ -203,8 +205,27 @@ function CitizenDashboard() {
                                             </Typography>
                                         </Box>
                                         <Box sx={{ display: 'flex', gap: 1 }}>
-                                            <Button variant="outlined" size="small">
+                                            <Button 
+                                                variant="outlined" 
+                                                size="small"
+                                                onClick={() => window.location.href = `/case-details/${request.id}`}
+                                                sx={{ position: 'relative' }}
+                                            >
                                                 View Details
+                                                {request.has_new_updates && (
+                                                    <Box
+                                                        sx={{
+                                                            position: 'absolute',
+                                                            top: -8,
+                                                            right: -8,
+                                                            backgroundColor: 'error.main',
+                                                            borderRadius: '50%',
+                                                            width: 12,
+                                                            height: 12,
+                                                            border: '2px solid white'
+                                                        }}
+                                                    />
+                                                )}
                                             </Button>
                                             {(request.status === 'accepted' || request.status === 'in_progress') && (
                                                 <Button 

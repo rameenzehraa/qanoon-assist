@@ -32,6 +32,7 @@ class CaseRequest(models.Model):
     request_date = models.DateTimeField(auto_now_add=True)
     response_message = models.TextField(blank=True)
     response_date = models.DateTimeField(null=True, blank=True)
+    last_viewed_at = models.DateTimeField(null=True, blank=True)
     
     class Meta:
         db_table = 'case_requests'

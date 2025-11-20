@@ -7,6 +7,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import Navbar from './components/common/Navbar';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import MessagesPage from './pages/MessagesPage';
+import CaseDetailsPage from './pages/CaseDetailsPage';
 
 // Pages
 import LoginPage from './pages/auth/LoginPage';
@@ -50,12 +51,22 @@ function App() {
               } 
             />
             
-            {/* ADD THIS - Messages Route */}
+            {/* Messages Route */}
             <Route 
               path="/messages/:caseId" 
               element={
                 <ProtectedRoute>
                   <MessagesPage />
+                </ProtectedRoute>
+              } 
+            />
+            
+            {/* Case Details Route */}
+            <Route 
+              path="/case-details/:requestId" 
+              element={
+                <ProtectedRoute>
+                  <CaseDetailsPage />
                 </ProtectedRoute>
               } 
             />

@@ -95,11 +95,23 @@ class CaseRequestViewSet(viewsets.ModelViewSet):
     
     @action(detail=True, methods=['post'])
     def start_progress(self, request, pk=None):
-        """Lawyer marks case as in progress"""
+        """Lawyer marks case as in progress and creates a Case"""
         case_request = self.get_object()
         
+        # Update case request status
         case_request.status = 'in_progress'
         case_request.save()
+        
+        # Create a Case if it doesn't exist
+        if not hasattr(case_request, 'case') or case_request.case_request is None:
+            Case.objects.create(
+                citizen=case_request.requester,
+                lawyer=case_request.lawyer,
+                case_request=case_request,
+                title=case_request.case_title,
+                description=case_request.description,
+                status='active'
+            )
         
         return Response({
             'message': 'Case status updated to in progress',
@@ -118,6 +130,29 @@ class CaseRequestViewSet(viewsets.ModelViewSet):
             'message': 'Case marked as completed',
             'data': self.get_serializer(case_request).data
         })
+    
+    @action(detail=True, methods=['post'])
+    def mark_viewed(self, request, pk=None):
+        """Mark case request as viewed by citizen"""
+        case_request = self.get_object()
+        
+        # Only citizens can mark as viewed
+        if request.user.user_type != 'citizen':
+            return Response(
+                {'error': 'Only citizens can mark cases as viewed'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Update last viewed timestamp
+        case_request.last_viewed_at = timezone.now()
+        case_request.save()
+        
+        return Response({
+            'message': 'Case marked as viewed',
+            'last_viewed_at': case_request.last_viewed_at
+        })
+
+
 class CaseViewSet(viewsets.ModelViewSet):
     serializer_class = CaseSerializer
     permission_classes = [IsAuthenticated]

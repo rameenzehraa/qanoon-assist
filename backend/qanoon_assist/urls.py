@@ -27,6 +27,7 @@ urlpatterns = [
     path('api/', include('users.urls')),  # For lawyers, specialties endpoints
     path('api/', include('cases.urls')),  # ADD THIS LINE
     path('api/', include('messaging.urls')),
+    path('api/', include('knowledge_base.urls')),
     
     # Authentication
     path('api/auth/login/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),

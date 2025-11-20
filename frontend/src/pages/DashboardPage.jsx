@@ -55,18 +55,7 @@ function DashboardPage() {
     }
 
     if (isAdmin) {
-        return (
-            <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-                <Paper elevation={6} sx={{ p: 4 }}>
-                    <Typography variant="h4" gutterBottom sx={{ fontWeight: 'bold', color: '#2c3e50' }}>
-                        Admin Dashboard
-                    </Typography>
-                    <Typography variant="body1" sx={{ color: '#7f8c8d' }}>
-                        Manage lawyers, verify accounts, and oversee the platform.
-                    </Typography>
-                </Paper>
-            </Container>
-        );
+        return <Navigate to="/admin/dashboard" />;
     }
 
     return (

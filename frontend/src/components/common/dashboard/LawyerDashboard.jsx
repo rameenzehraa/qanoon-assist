@@ -318,6 +318,14 @@ function LawyerDashboard() {
                                             <>
                                                 <Button 
                                                     variant="contained"
+                                                    color="primary"
+                                                    size="small"
+                                                    onClick={() => window.location.href = `/case-details/${request.id}`}
+                                                >
+                                                    View Details
+                                                </Button>
+                                                <Button 
+                                                    variant="contained"
                                                     size="small"
                                                     onClick={() => handleOpenDialog(request, 'complete')}
                                                 >

@@ -111,6 +111,7 @@ export const lawyerAPI = {
 export const adminAPI = {
     getStats: () => api.get('/admin/dashboard/'),
     getPendingLawyers: () => api.get('/admin/dashboard/pending_lawyers/'),
+    getRecentActivity: () => api.get('/admin/dashboard/recent_activity/'),
 };
 
 export const specialtyAPI = {
@@ -133,9 +134,10 @@ export const caseRequestAPI = {
     reject: (id, message) => api.post(`/case-requests/${id}/reject/`, { message }),
     startProgress: (id) => api.post(`/case-requests/${id}/start_progress/`),
     complete: (id) => api.post(`/case-requests/${id}/complete/`),
+    // Mark as viewed (citizen only) - ADD THIS
+    markViewed: (id) => api.post(`/case-requests/${id}/mark_viewed/`),
 };
 
-// Messaging API
 // Messaging API
 export const messageAPI = {
     // Get all messages for a case request
@@ -163,3 +165,27 @@ export const messageAPI = {
     // Get all messages (for current user)
     getAll: () => api.get('/messages/'),
 };
+
+// Case API
+export const caseAPI = {
+    getAll: () => api.get('/cases/'),
+    getById: (id) => api.get(`/cases/${id}/`),
+    create: (data) => api.post('/cases/', data),
+};
+
+// Hearing API
+export const hearingAPI = {
+    getAll: () => api.get('/hearings/'),
+    getById: (id) => api.get(`/hearings/${id}/`),
+    create: (data) => api.post('/hearings/', data),
+    update: (id, data) => api.put(`/hearings/${id}/`, data),
+    delete: (id) => api.delete(`/hearings/${id}/`),
+};
+
+// Case Update API
+export const caseUpdateAPI = {
+    getAll: () => api.get('/case-updates/'),
+    getById: (id) => api.get(`/case-updates/${id}/`),
+    create: (data) => api.post('/case-updates/', data),
+};
+
