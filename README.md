@@ -1,6 +1,10 @@
 # 🏛️ Qanoon Assist
 
-A comprehensive lawyer-client platform for Pakistan that connects citizens with verified lawyers, facilitates case management, and provides real-time communication.
+A **prototype** lawyer-client platform for Pakistan that connects citizens with verified lawyers, enables case management, and supports real-time communication.
+
+> ⚠️ **Important Notice**  
+> This project is a **prototype only** and not a production-ready application.  
+> **Copying, redistributing, or reusing any part of this project without explicit permission is strictly prohibited.**
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Django](https://img.shields.io/badge/Django-5.2.7-green.svg)
@@ -292,60 +296,12 @@ GET /api/admin/dashboard/recent_activity/
 ### 🚧 In Progress
 - [ ] Knowledge Base (Legal articles database)
 
-### 📅 Upcoming (Phases 8-16)
-- [ ] Advanced search & filters
-- [ ] Email/SMS notifications
-- [ ] Payment integration
-- [ ] Reviews & ratings system
-- [ ] Document management
-- [ ] Calendar & scheduling
-- [ ] Analytics & reports
-- [ ] Multi-language support (Urdu/English)
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome! Please follow these steps:
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
----
-
-## 📝 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
 ---
 
 ## 👨‍💻 Authors
 
-- **Rameen Zehra** - [GitHub](https://github.com/rameenzehraa)
+- **Rameen Zehra**
+- **Aisha Asif**
+- **Omaima Afaq**
 
 ---
-
-## 🙏 Acknowledgments
-
-- Built for the people of Pakistan to improve access to legal services
-- Inspired by the need for transparent lawyer-client communication
-- Thanks to all contributors and supporters
-
----
-
-## 📧 Contact
-
-For questions or support, please open an issue on GitHub or contact the maintainers.
-
----
-
-## ⚖️ Legal Disclaimer
-
-This platform is designed to facilitate connections between citizens and lawyers. It does not provide legal advice. Users should consult with qualified legal professionals for specific legal matters.
-
----
-
-**Made with ❤️ for Pakistan's Legal Community**
