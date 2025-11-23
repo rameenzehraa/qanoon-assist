@@ -1,0 +1,107 @@
+------------------------------------------------------
+superuser creation for testing
+------------------------------------------------------
+python manage.py createsuperuser
+
+Follow the prompts:
+```
+Username: admin
+Email address: admin@qanoonassist.com
+User type (citizen/lawyer/admin): admin
+Phone number: +923001234567
+Password: aisha123
+Password (again): aisha123
+Superuser created successfully.
+
+------------------------------------------------------
+.env.example 
+------------------------------------------------------
+# Database Configuration
+DB_NAME=qanoon_assist
+DB_USER=qanoon_user
+DB_PASSWORD=QanoonSecure@2025
+DB_HOST=localhost
+DB_PORT=5432
+
+# Django Secret Key (generate a new one for production)
+SECRET_KEY=django-insecure-your-secret-key-here
+
+# Debug Mode
+DEBUG=True
+
+------------------------------------------------------
+database creation in postgresql
+------------------------------------------------------
+-- Grant all privileges on database
+GRANT ALL PRIVILEGES ON DATABASE qanoon_assist TO qanoon_user;
+
+-- Connect to qanoon_assist database first
+\c qanoon_assist
+
+-- Grant privileges on schema
+GRANT ALL ON SCHEMA public TO qanoon_user;
+
+-- Grant privileges on all tables (for future tables)
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO qanoon_user;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO qanoon_user;
+
+------------------------------------------------------
+verify working
+------------------------------------------------------
+venv\Scripts\activate
+python manage.py makemigrations users
+python manage.py makemigrations
+python manage.py migrate
+python manage.py load_test_data
+python manage.py runserver
+deactivate
+npm start
+http://127.0.0.1:8000/admin/
+
+------------------------------------------------------
+delete if neccessary
+------------------------------------------------------
+del users\migrations\0*.py
+del cases\migrations\0*.py  
+del messaging\migrations\0*.py
+del knowledge_base\migrations\0*.py
+
+del users\migrations\0*.py 2>nul
+del cases\migrations\0*.py 2>nul
+del messaging\migrations\0*.py 2>nul
+del knowledge_base\migrations\0*.py 2>nul
+
+rmdir /s /q users\__pycache__ 2>nul
+rmdir /s /q users\migrations\__pycache__ 2>nul
+rmdir /s /q cases\__pycache__ 2>nul
+rmdir /s /q cases\migrations\__pycache__ 2>nul
+rmdir /s /q messaging\__pycache__ 2>nul
+rmdir /s /q messaging\migrations\__pycache__ 2>nul
+rmdir /s /q knowledge_base\__pycache__ 2>nul
+rmdir /s /q knowledge_base\migrations\__pycache__ 2>nul
+rmdir /s /q backend\__pycache__ 2>nul
+
+
+------------------------------------------------------
+git steps
+------------------------------------------------------
+# Initialize git
+git init
+
+# Add remote
+git remote add origin https://github.com/rameenzehraa/qanoon-assist.git
+
+# Add all your files
+git add .
+
+git config --global user.email "your-email@example.com"
+
+# Commit your code
+git commit -m "feat: complete project rewrite with modern UI"
+
+# FORCE push (replaces everything on GitHub)
+git branch -M main
+git push -f origin main
+
+# Remove Git tracking completely
+rm -rf .git
