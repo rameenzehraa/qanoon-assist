@@ -31,7 +31,7 @@ INSTALLED_APPS = [
     'cases',
     'messaging',
     'knowledge_base',
-    # 'django_extensions',
+    'django_extensions',
 ]
 
 AUTH_USER_MODEL = 'users.User'
@@ -122,6 +122,8 @@ DATABASES = {
         },
     }
 }
+
+
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [

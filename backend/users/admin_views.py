@@ -28,33 +28,71 @@ class AdminDashboardViewSet(viewsets.ViewSet):
         from cases.models import CaseRequest, Case, Hearing, CaseUpdate
         from messaging.models import Message
         
-        # User statistics
-        total_users = User.objects.count()
-        total_citizens = User.objects.filter(user_type='citizen').count()
-        total_lawyers = LawyerProfile.objects.count()
-        verified_lawyers = LawyerProfile.objects.filter(is_verified=True).count()
-        pending_verification = LawyerProfile.objects.filter(is_verified=False).count()
-        
-        # Case statistics
-        total_case_requests = CaseRequest.objects.count()
-        pending_requests = CaseRequest.objects.filter(status='pending').count()
-        accepted_requests = CaseRequest.objects.filter(status='accepted').count()
-        in_progress_cases = CaseRequest.objects.filter(status='in_progress').count()
-        completed_cases = CaseRequest.objects.filter(status='completed').count()
-        rejected_requests = CaseRequest.objects.filter(status='rejected').count()
-        
-        # Active cases (Case model)
-        total_cases = Case.objects.count()
-        active_cases = Case.objects.filter(status='active').count()
-        
-        # Hearings and updates
-        total_hearings = Hearing.objects.count()
-        upcoming_hearings = Hearing.objects.filter(hearing_date__gte=timezone.now()).count()
-        total_case_updates = CaseUpdate.objects.count()
-        
-        # Messaging statistics
-        total_messages = Message.objects.count()
-        unread_messages = Message.objects.filter(is_read=False).count()
+        # Get all statistics using raw SQL for better performance
+        from django.db import connection
+                
+        with connection.cursor() as cursor:
+            # Single comprehensive query for all statistics
+            cursor.execute("""
+                SELECT 
+                    -- User statistics
+                    (SELECT COUNT(*) FROM users) as total_users,
+                    (SELECT COUNT(*) FROM users WHERE user_type = 'citizen') as total_citizens,
+                    (SELECT COUNT(*) FROM lawyer_profiles) as total_lawyers,
+                    (SELECT COUNT(*) FROM lawyer_profiles WHERE is_verified = TRUE) as verified_lawyers,
+                    (SELECT COUNT(*) FROM lawyer_profiles WHERE is_verified = FALSE) as pending_verification,
+                    
+                    -- Case request statistics
+                    (SELECT COUNT(*) FROM case_requests) as total_case_requests,
+                    (SELECT COUNT(*) FROM case_requests WHERE status = 'pending') as pending_requests,
+                    (SELECT COUNT(*) FROM case_requests WHERE status = 'accepted') as accepted_requests,
+                    (SELECT COUNT(*) FROM case_requests WHERE status = 'in_progress') as in_progress_cases,
+                    (SELECT COUNT(*) FROM case_requests WHERE status = 'completed') as completed_cases,
+                    (SELECT COUNT(*) FROM case_requests WHERE status = 'rejected') as rejected_requests,
+                    
+                    -- Case statistics
+                    (SELECT COUNT(*) FROM cases) as total_cases,
+                    (SELECT COUNT(*) FROM cases WHERE status = 'active') as active_cases,
+                    
+                    -- Hearing and update statistics
+                    (SELECT COUNT(*) FROM hearings) as total_hearings,
+                    (SELECT COUNT(*) FROM hearings WHERE hearing_date >= NOW()) as upcoming_hearings,
+                    (SELECT COUNT(*) FROM case_updates) as total_case_updates,
+                    
+                    -- Message statistics
+                    (SELECT COUNT(*) FROM messages) as total_messages,
+                    (SELECT COUNT(*) FROM messages WHERE is_read = FALSE) as unread_messages
+            """)
+            
+            row = cursor.fetchone()
+            
+            # User stats
+            total_users = row[0]
+            total_citizens = row[1]
+            total_lawyers = row[2]
+            verified_lawyers = row[3]
+            pending_verification = row[4]
+            
+            # Case request stats
+            total_case_requests = row[5]
+            pending_requests = row[6]
+            accepted_requests = row[7]
+            in_progress_cases = row[8]
+            completed_cases = row[9]
+            rejected_requests = row[10]
+            
+            # Case stats
+            total_cases = row[11]
+            active_cases = row[12]
+            
+            # Hearing and update stats
+            total_hearings = row[13]
+            upcoming_hearings = row[14]
+            total_case_updates = row[15]
+            
+            # Message stats
+            total_messages = row[16]
+            unread_messages = row[17]
         
         stats = {
             # User stats
@@ -111,42 +149,74 @@ class AdminDashboardViewSet(viewsets.ViewSet):
         if request.user.user_type != 'admin':
             return Response({'error': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
         
-        from cases.models import CaseRequest, Case
-        
-        # Get recent case requests (last 10)
-        recent_requests = CaseRequest.objects.select_related(
-            'requester__user', 'lawyer__user'
-        ).order_by('-request_date')[:10]
-        
-        # Get recent cases (last 10)
-        recent_cases = Case.objects.select_related(
-            'citizen__user', 'lawyer__user'
-        ).order_by('-filing_date')[:10]
-        
+        from cases.models import CaseRequest, Case        
+        from django.db import connection
+
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                SELECT 
+                    cr.id, 
+                    cr.case_title,
+                    cu.first_name || ' ' || cu.last_name as citizen_name,
+                    lu.first_name || ' ' || lu.last_name as lawyer_name,
+                    cr.status,
+                    cr.request_date
+                FROM case_requests cr
+                INNER JOIN citizen_profiles cp ON cr.requester_id = cp.id
+                INNER JOIN users cu ON cp.user_id = cu.id
+                INNER JOIN lawyer_profiles lp ON cr.lawyer_id = lp.id
+                INNER JOIN users lu ON lp.user_id = lu.id
+                ORDER BY cr.request_date DESC
+                LIMIT 10
+            """)
+            
+            recent_requests_data = [
+                {
+                    'id': row[0],
+                    'title': row[1],
+                    'citizen': row[2],
+                    'lawyer': row[3],
+                    'status': row[4],
+                    'date': row[5],
+                }
+                for row in cursor.fetchall()
+            ]
+
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                SELECT 
+                    c.id,
+                    c.case_number,
+                    c.title,
+                    cu.first_name || ' ' || cu.last_name as citizen_name,
+                    lu.first_name || ' ' || lu.last_name as lawyer_name,
+                    c.status,
+                    c.filing_date
+                FROM cases c
+                INNER JOIN citizen_profiles cp ON c.citizen_id = cp.id
+                INNER JOIN users cu ON cp.user_id = cu.id
+                INNER JOIN lawyer_profiles lp ON c.lawyer_id = lp.id
+                INNER JOIN users lu ON lp.user_id = lu.id
+                ORDER BY c.filing_date DESC
+                LIMIT 10
+            """)
+            
+            recent_cases_data = [
+                {
+                    'id': row[0],
+                    'case_number': row[1],
+                    'title': row[2],
+                    'citizen': row[3],
+                    'lawyer': row[4],
+                    'status': row[5],
+                    'date': row[6],
+                }
+                for row in cursor.fetchall()
+            ]
+
         activity = {
-            'recent_requests': [
-                {
-                    'id': req.id,
-                    'title': req.case_title,
-                    'citizen': req.requester.user.get_full_name(),
-                    'lawyer': req.lawyer.user.get_full_name(),
-                    'status': req.status,
-                    'date': req.request_date,
-                }
-                for req in recent_requests
-            ],
-            'recent_cases': [
-                {
-                    'id': case.id,
-                    'case_number': case.case_number,
-                    'title': case.title,
-                    'citizen': case.citizen.user.get_full_name(),
-                    'lawyer': case.lawyer.user.get_full_name(),
-                    'status': case.status,
-                    'date': case.filing_date,
-                }
-                for case in recent_cases
-            ],
+            'recent_requests': recent_requests_data,
+            'recent_cases': recent_cases_data,
         }
-        
+
         return Response(activity)

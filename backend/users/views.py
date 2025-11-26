@@ -98,51 +98,99 @@ class LawyerViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [AllowAny]
     
     def get_queryset(self):
-        queryset = super().get_queryset()
+        """Get verified lawyers with optional filters (using raw SQL for city filter)"""
+        from django.db import connection
         
-        # Filter by city
         city = self.request.query_params.get('city', None)
-        if city:
-            queryset = queryset.filter(city__icontains=city)
-        
-        # Filter by specialty
         specialty_id = self.request.query_params.get('specialty', None)
+        
+        # Use raw SQL when city filter is applied
+        if city:
+            with connection.cursor() as cursor:
+                cursor.execute("""
+                    SELECT * FROM lawyer_profiles 
+                    WHERE is_verified = TRUE 
+                    AND LOWER(city) LIKE LOWER(%s)
+                    ORDER BY id DESC
+                """, [f'%{city}%'])
+                
+                columns = [col[0] for col in cursor.description]
+                lawyer_data = [dict(zip(columns, row)) for row in cursor.fetchall()]
+                lawyer_ids = [item['id'] for item in lawyer_data]
+                queryset = LawyerProfile.objects.filter(id__in=lawyer_ids)
+        else:
+            # Use ORM for base query
+            queryset = LawyerProfile.objects.filter(is_verified=True)
+        
+        # Apply specialty filter using ORM
         if specialty_id:
             queryset = queryset.filter(specialties__id=specialty_id)
         
         return queryset
-    
+        
     @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
     def unverified(self, request):
-        """Admin endpoint to get unverified lawyers"""
+        """Admin endpoint to get unverified lawyers (using raw SQL)"""
         if request.user.user_type != 'admin':
             return Response({'error': 'Unauthorized'}, status=status.HTTP_403_FORBIDDEN)
         
-        unverified = LawyerProfile.objects.filter(is_verified=False)
+        # Raw SQL Query - Demonstrates ability to use both ORM and raw SQL
+        from django.db import connection
+        
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                SELECT * FROM lawyer_profiles 
+                WHERE is_verified = FALSE
+                ORDER BY id DESC
+            """)
+            columns = [col[0] for col in cursor.description]
+            unverified_data = [
+                dict(zip(columns, row))
+                for row in cursor.fetchall()
+            ]
+        
+        # Convert raw data to LawyerProfile objects for serialization
+        unverified_ids = [item['id'] for item in unverified_data]
+        unverified = LawyerProfile.objects.filter(id__in=unverified_ids)
         serializer = self.get_serializer(unverified, many=True)
         return Response(serializer.data)
     
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def verify(self, request, pk=None):
-        """Admin endpoint to verify a lawyer"""
+        """Admin endpoint to verify a lawyer (using raw SQL UPDATE)"""
         if request.user.user_type != 'admin':
             return Response({'error': 'Only admins can verify lawyers'}, status=status.HTTP_403_FORBIDDEN)
         
-        try:
-            lawyer = LawyerProfile.objects.get(id=pk)
-        except LawyerProfile.DoesNotExist:
-            return Response({'error': 'Lawyer not found'}, status=status.HTTP_404_NOT_FOUND)
+        from django.db import connection
         
-        lawyer.is_verified = True
-        lawyer.verification_date = timezone.now()
-        lawyer.verified_by = request.user
-        lawyer.save()
+        # Check if lawyer exists using raw SQL
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                SELECT * FROM lawyer_profiles 
+                WHERE id = %s
+            """, [pk])
+            
+            if not cursor.fetchone():
+                return Response({'error': 'Lawyer not found'}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Update verification status using raw SQL
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                UPDATE lawyer_profiles 
+                SET is_verified = TRUE,
+                    verification_date = %s,
+                    verified_by_id = %s
+                WHERE id = %s
+            """, [timezone.now(), request.user.id, pk])
+        
+        # Fetch updated lawyer for response
+        lawyer = LawyerProfile.objects.get(id=pk)
         
         return Response({
             'message': f'Lawyer {lawyer.user.get_full_name()} verified successfully',
             'lawyer': self.get_serializer(lawyer).data
         })
-    
+        
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def reject(self, request, pk=None):
         """Admin endpoint to reject/unverify a lawyer"""
@@ -157,16 +205,42 @@ class LawyerViewSet(viewsets.ReadOnlyModelViewSet):
         reason = request.data.get('reason', 'Not specified')
         
         # Option 1: Delete the account
-        # user = lawyer.user
-        # user.delete()
+        user = lawyer.user
+        user.delete()
         
         # Option 2: Just mark as unverified (we'll use this)
-        lawyer.is_verified = False
-        lawyer.save()
+        # lawyer.is_verified = False  # ⬅️ PROBLEM: Already False!
+        # lawyer.save()
         
         return Response({
             'message': f'Lawyer rejected. Reason: {reason}'
         })
+    
+    @action(detail=False, methods=['get'], permission_classes=[AllowAny])
+    def stats(self, request):
+        """Get lawyer statistics using raw SQL"""
+        from django.db import connection
+        
+        with connection.cursor() as cursor:
+            # Count total verified lawyers
+            cursor.execute("""
+                SELECT COUNT(*) as total_verified,
+                    COUNT(CASE WHEN city = 'Karachi' THEN 1 END) as karachi_lawyers,
+                    COUNT(CASE WHEN city = 'Lahore' THEN 1 END) as lahore_lawyers,
+                    COUNT(CASE WHEN city = 'Islamabad' THEN 1 END) as islamabad_lawyers
+                FROM lawyer_profiles 
+                WHERE is_verified = TRUE
+            """)
+            
+            row = cursor.fetchone()
+            stats_data = {
+                'total_verified': row[0],
+                'karachi_lawyers': row[1],
+                'lahore_lawyers': row[2],
+                'islamabad_lawyers': row[3]
+            }
+        
+        return Response(stats_data)
 
 class LawyerSpecialtyViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = LawyerSpecialty.objects.all()

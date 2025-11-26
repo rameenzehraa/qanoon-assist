@@ -17,21 +17,41 @@ class CaseRequestViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     
     def get_queryset(self):
+        """Get case requests using raw SQL for citizens and lawyers"""
         user = self.request.user
+        from django.db import connection
         
-        # Citizens see their own requests
+        # Citizens see their own requests (using raw SQL)
         if user.user_type == 'citizen':
-            return CaseRequest.objects.filter(
-                requester=user.citizen_profile
-            ).select_related('requester__user', 'lawyer__user')
+            with connection.cursor() as cursor:
+                cursor.execute("""
+                    SELECT * FROM case_requests 
+                    WHERE requester_id = %s
+                    ORDER BY request_date DESC
+                """, [user.citizen_profile.id])
+                
+                columns = [col[0] for col in cursor.description]
+                request_data = [dict(zip(columns, row)) for row in cursor.fetchall()]
+                request_ids = [item['id'] for item in request_data]
+                
+                return CaseRequest.objects.filter(id__in=request_ids).select_related('requester__user', 'lawyer__user')
         
-        # Lawyers see requests sent to them
+        # Lawyers see requests sent to them (using raw SQL)
         elif user.user_type == 'lawyer':
-            return CaseRequest.objects.filter(
-                lawyer=user.lawyer_profile
-            ).select_related('requester__user', 'lawyer__user')
+            with connection.cursor() as cursor:
+                cursor.execute("""
+                    SELECT * FROM case_requests 
+                    WHERE lawyer_id = %s
+                    ORDER BY request_date DESC
+                """, [user.lawyer_profile.id])
+                
+                columns = [col[0] for col in cursor.description]
+                request_data = [dict(zip(columns, row)) for row in cursor.fetchall()]
+                request_ids = [item['id'] for item in request_data]
+                
+                return CaseRequest.objects.filter(id__in=request_ids).select_related('requester__user', 'lawyer__user')
         
-        # Admins see all
+        # Admins see all (using ORM)
         elif user.user_type == 'admin':
             return CaseRequest.objects.all().select_related('requester__user', 'lawyer__user')
         
@@ -65,13 +85,24 @@ class CaseRequestViewSet(viewsets.ModelViewSet):
     
     @action(detail=True, methods=['post'])
     def accept(self, request, pk=None):
-        """Lawyer accepts a case request"""
+        """Lawyer accepts a case request (using raw SQL UPDATE)"""
         case_request = self.get_object()
+        from django.db import connection
         
-        case_request.status = 'accepted'
-        case_request.response_date = timezone.now()
-        case_request.response_message = request.data.get('message', 'Request accepted')
-        case_request.save()
+        message = request.data.get('message', 'Request accepted')
+        
+        # Update using raw SQL
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                UPDATE case_requests 
+                SET status = 'accepted',
+                    response_date = %s,
+                    response_message = %s
+                WHERE id = %s
+            """, [timezone.now(), message, pk])
+        
+        # Refresh object for response
+        case_request.refresh_from_db()
         
         return Response({
             'message': 'Case request accepted',
@@ -80,13 +111,24 @@ class CaseRequestViewSet(viewsets.ModelViewSet):
     
     @action(detail=True, methods=['post'])
     def reject(self, request, pk=None):
-        """Lawyer rejects a case request"""
+        """Lawyer rejects a case request (using raw SQL UPDATE)"""
         case_request = self.get_object()
+        from django.db import connection
         
-        case_request.status = 'rejected'
-        case_request.response_date = timezone.now()
-        case_request.response_message = request.data.get('message', 'Request rejected')
-        case_request.save()
+        message = request.data.get('message', 'Request rejected')
+        
+        # Update using raw SQL
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                UPDATE case_requests 
+                SET status = 'rejected',
+                    response_date = %s,
+                    response_message = %s
+                WHERE id = %s
+            """, [timezone.now(), message, pk])
+        
+        # Refresh object for response
+        case_request.refresh_from_db()
         
         return Response({
             'message': 'Case request rejected',
@@ -151,6 +193,66 @@ class CaseRequestViewSet(viewsets.ModelViewSet):
             'message': 'Case marked as viewed',
             'last_viewed_at': case_request.last_viewed_at
         })
+    
+    @action(detail=False, methods=['get'])
+    def stats(self, request):
+        """Get case request statistics using raw SQL"""
+        from django.db import connection
+        user = request.user
+        
+        # For lawyers - get their stats
+        if user.user_type == 'lawyer':
+            with connection.cursor() as cursor:
+                cursor.execute("""
+                    SELECT 
+                        COUNT(*) as total_requests,
+                        COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending,
+                        COUNT(CASE WHEN status = 'accepted' THEN 1 END) as accepted,
+                        COUNT(CASE WHEN status = 'in_progress' THEN 1 END) as in_progress,
+                        COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed,
+                        COUNT(CASE WHEN status = 'rejected' THEN 1 END) as rejected
+                    FROM case_requests 
+                    WHERE lawyer_id = %s
+                """, [user.lawyer_profile.id])
+                
+                row = cursor.fetchone()
+                stats_data = {
+                    'total_requests': row[0],
+                    'pending': row[1],
+                    'accepted': row[2],
+                    'in_progress': row[3],
+                    'completed': row[4],
+                    'rejected': row[5]
+                }
+        
+        # For citizens - get their stats
+        elif user.user_type == 'citizen':
+            with connection.cursor() as cursor:
+                cursor.execute("""
+                    SELECT 
+                        COUNT(*) as total_requests,
+                        COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending,
+                        COUNT(CASE WHEN status = 'accepted' THEN 1 END) as accepted,
+                        COUNT(CASE WHEN status = 'in_progress' THEN 1 END) as in_progress,
+                        COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed,
+                        COUNT(CASE WHEN status = 'rejected' THEN 1 END) as rejected
+                    FROM case_requests 
+                    WHERE requester_id = %s
+                """, [user.citizen_profile.id])
+                
+                row = cursor.fetchone()
+                stats_data = {
+                    'total_requests': row[0],
+                    'pending': row[1],
+                    'accepted': row[2],
+                    'in_progress': row[3],
+                    'completed': row[4],
+                    'rejected': row[5]
+                }
+        else:
+            return Response({'error': 'Unauthorized'}, status=status.HTTP_403_FORBIDDEN)
+        
+        return Response(stats_data)
 
 
 class CaseViewSet(viewsets.ModelViewSet):
@@ -158,16 +260,44 @@ class CaseViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     
     def get_queryset(self):
+        """Get cases using raw SQL for filtering"""
         user = self.request.user
+        from django.db import connection
         
         if user.user_type == 'citizen':
-            return Case.objects.filter(citizen=user.citizen_profile)
+            with connection.cursor() as cursor:
+                cursor.execute("""
+                    SELECT * FROM cases 
+                    WHERE citizen_id = %s
+                    ORDER BY filing_date DESC
+                """, [user.citizen_profile.id])
+                
+                columns = [col[0] for col in cursor.description]
+                case_data = [dict(zip(columns, row)) for row in cursor.fetchall()]
+                case_ids = [item['id'] for item in case_data]
+                
+                return Case.objects.filter(id__in=case_ids)
+        
         elif user.user_type == 'lawyer':
-            return Case.objects.filter(lawyer=user.lawyer_profile)
+            with connection.cursor() as cursor:
+                cursor.execute("""
+                    SELECT * FROM cases 
+                    WHERE lawyer_id = %s
+                    ORDER BY filing_date DESC
+                """, [user.lawyer_profile.id])
+                
+                columns = [col[0] for col in cursor.description]
+                case_data = [dict(zip(columns, row)) for row in cursor.fetchall()]
+                case_ids = [item['id'] for item in case_data]
+                
+                return Case.objects.filter(id__in=case_ids)
+        
         elif user.user_type == 'admin':
             return Case.objects.all()
         
         return Case.objects.none()
+    
+
 
 
 class HearingViewSet(viewsets.ModelViewSet):
