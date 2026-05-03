@@ -12,9 +12,11 @@ from .serializers import (
     CustomTokenObtainPairSerializer, UserDetailSerializer
 )
 from repositories import UserRepository
+from factories import UserFactory
 
 User = get_user_model()
 user_repo = UserRepository()
+user_factory = UserFactory()
 
 
 class CustomTokenObtainPairView(TokenObtainPairView):
@@ -29,7 +31,7 @@ class CitizenRegistrationView(generics.CreateAPIView):
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        user = serializer.save()
+        user = user_factory.create('citizen', **serializer.validated_data)
         return Response({
             'message': 'Citizen registered successfully',
             'user': {
@@ -50,7 +52,7 @@ class LawyerRegistrationView(generics.CreateAPIView):
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        user = serializer.save()
+        user = user_factory.create('lawyer', **serializer.validated_data)
         return Response({
             'message': 'Lawyer registered successfully! Your account is pending admin verification. You will be notified once verified.',
             'user': {

@@ -47,34 +47,6 @@ class CitizenRegistrationSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({"password": "Password fields didn't match."})
         return attrs
     
-    def create(self, validated_data):
-        # Extract profile data
-        address = validated_data.pop('address')
-        city = validated_data.pop('city')
-        cnic = validated_data.pop('cnic')
-        validated_data.pop('password2')
-        
-        # Create user
-        user = User.objects.create_user(
-            username=validated_data['username'],
-            email=validated_data['email'],
-            password=validated_data['password'],
-            first_name=validated_data.get('first_name', ''),
-            last_name=validated_data.get('last_name', ''),
-            phone_number=validated_data.get('phone_number', ''),
-            user_type='citizen'
-        )
-        
-        # Create citizen profile
-        CitizenProfile.objects.create(
-            user=user,
-            address=address,
-            city=city,
-            cnic=cnic
-        )
-        
-        return user
-
 class LawyerRegistrationSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=True, validators=[validate_password])
     password2 = serializers.CharField(write_only=True, required=True)
@@ -121,51 +93,6 @@ class LawyerRegistrationSerializer(serializers.ModelSerializer):
         
         return attrs
     
-    def create(self, validated_data):
-        # Extract profile data
-        bar_council_number = validated_data.pop('bar_council_number')
-        experience_years = validated_data.pop('experience_years')
-        consultation_fee = validated_data.pop('consultation_fee')
-        city = validated_data.pop('city')
-        bio = validated_data.pop('bio', '')
-        specialty_ids = validated_data.pop('specialty_ids', [])
-        cnic = validated_data.pop('cnic')
-        address = validated_data.pop('address')
-        profile_picture = validated_data.pop('profile_picture', None)
-        validated_data.pop('password2')
-        
-        # Create user
-        user = User.objects.create_user(
-            username=validated_data['username'],
-            email=validated_data['email'],
-            password=validated_data['password'],
-            first_name=validated_data.get('first_name', ''),
-            last_name=validated_data.get('last_name', ''),
-            phone_number=validated_data.get('phone_number', ''),
-            user_type='lawyer'
-        )
-        
-        # Create lawyer profile
-        lawyer_profile = LawyerProfile.objects.create(
-            user=user,
-            bar_council_number=bar_council_number,
-            experience_years=experience_years,
-            consultation_fee=consultation_fee,
-            city=city,
-            bio=bio,
-            cnic=cnic,
-            address=address,
-            profile_picture=profile_picture,
-            is_verified=False  # Needs admin verification
-        )
-        
-        # Add specialties
-        if specialty_ids:
-            specialties = LawyerSpecialty.objects.filter(id__in=specialty_ids)
-            lawyer_profile.specialties.set(specialties)
-        
-        return user
-
 # Custom JWT Token Serializer
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
