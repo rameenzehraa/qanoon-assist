@@ -1,0 +1,38 @@
+services:
+  - type: web
+    name: qanoon-assist-api
+    env: python
+    plan: free
+    region: oregon
+    rootDir: backend
+    buildCommand: |
+      pip install -r requirements.txt &&
+      python manage.py collectstatic --noinput --settings=qanoon_assist.settings_prod &&
+      python manage.py migrate --settings=qanoon_assist.settings_prod
+    startCommand: >-
+      gunicorn qanoon_assist.wsgi:application
+      --workers 2
+      --bind 0.0.0.0:$PORT
+      --log-file -
+    healthCheckPath: /api/
+    envVars:
+      - key: DJANGO_SETTINGS_MODULE
+        value: qanoon_assist.settings_prod
+      - key: DEBUG
+        value: "False"
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        # Paste your Supabase connection string in the Render dashboard.
+        # Format: postgresql://user:password@host:port/dbname
+        sync: false
+      - key: ALLOWED_HOSTS
+        # Your Render service hostname, e.g.: qanoon-assist-api.onrender.com
+        sync: false
+      - key: CORS_ORIGINS
+        # Comma-separated frontend URLs, e.g.: https://your-frontend.vercel.app
+        sync: false
+      - key: DATABASE_SSL_REQUIRE
+        value: "True"
+      - key: PYTHON_VERSION
+        value: "3.13.9"
