@@ -1,0 +1,122 @@
+========================================================================
+COMPLEXITY BASELINE — Before Design Pattern Refactoring
+Derived from initial codebase audit (original commit: 4532433)
+========================================================================
+
+FILES ANALYSED
+------------------------------------------------------------------------
+
+cases/views.py  (346 lines)
+  Responsibilities: 6
+    1. CaseRequest CRUD (create, list, retrieve)
+    2. CaseRequest status transitions (accept, reject, start_progress,
+       complete, mark_viewed)
+    3. Inline ORM queries (no repository abstraction)
+    4. Raw SQL for unread-message counts inside view action
+    5. N+1 queries in serializer method fields (no prefetch)
+    6. Direct Notification.objects.create() side-effects inside actions
+  Radon CC (estimated):
+    CaseRequestViewSet.create           C (11)
+    CaseRequestViewSet.accept           B  (8)
+    CaseRequestViewSet.reject           B  (7)
+    CaseRequestViewSet.start_progress   B  (8)
+    CaseRequestViewSet.complete         B  (6)
+    CaseRequestViewSet.get_queryset     B  (7)
+  Average grade: B/C   Average complexity: ~7.8
+
+messaging/views.py  (243 lines)
+  Responsibilities: 5
+    1. Message send (create)
+    2. Message list per case
+    3. Raw SQL for unread counts (cursor.execute)
+    4. Raw SQL for per-user message stats
+    5. Mark-as-read logic embedded in view action
+  Radon CC (estimated):
+    MessagingViewSet.create             B  (7)
+    MessagingViewSet.list               B  (6)
+    MessagingViewSet.unread_count       B  (8)
+    MessagingViewSet.stats              C (10)
+    MessagingViewSet.mark_read          B  (6)
+  Average grade: B/C   Average complexity: ~7.4
+
+users/views.py  (248 lines)
+  Responsibilities: 5
+    1. Citizen registration (User + CitizenProfile creation in serializer)
+    2. Lawyer registration (User + LawyerProfile + specialty M2M in serializer)
+    3. Lawyer list / filter
+    4. Lawyer verify / reject (admin actions)
+    5. Raw SQL for city-level lawyer stats
+  Radon CC (estimated):
+    CitizenRegistrationView.create      B  (6)
+    LawyerRegistrationView.create       B  (7)
+    LawyerViewSet.verify                B  (6)
+    LawyerViewSet.reject                B  (5)
+    LawyerViewSet.stats                 B  (8)
+  Average grade: B   Average complexity: ~6.4
+
+cases/serializers.py  (127 lines)
+  Responsibilities: 5
+    1. CaseRequest serialization
+    2. Unread message count (raw SQL in SerializerMethodField)
+    3. Case ID lookup (extra ORM query per object — N+1)
+    4. New-updates detection (extra ORM query per object — N+1)
+    5. Notification send inside serializer.create()
+  Radon CC (estimated):
+    CaseRequestSerializer.get_unread_messages_count  C (10)
+    CaseRequestSerializer.get_case_id                B  (6)
+    CaseRequestSerializer.get_has_new_updates        C (11)
+  Average grade: C   Average complexity: ~9.0
+
+users/serializers.py  (217 lines)
+  Responsibilities: 6
+    1. CitizenRegistrationSerializer.create() — User creation
+    2. CitizenRegistrationSerializer.create() — CitizenProfile creation
+    3. LawyerRegistrationSerializer.create() — User creation
+    4. LawyerRegistrationSerializer.create() — LawyerProfile creation
+    5. LawyerRegistrationSerializer.create() — specialty M2M assignment
+    6. CNIC duplication check inside serializer validate()
+  Radon CC (estimated):
+    CitizenRegistrationSerializer.create   B  (7)
+    LawyerRegistrationSerializer.create    C (12)
+    LawyerRegistrationSerializer.validate  B  (6)
+  Average grade: B/C   Average complexity: ~8.3
+
+------------------------------------------------------------------------
+ADDITIONAL OBSERVATIONS FROM AUDIT
+------------------------------------------------------------------------
+
+Raw SQL blocks found: 13 total
+  - messaging/views.py : 4 cursor.execute() calls
+  - users/views.py     : 3 cursor.execute() calls  (city stats)
+  - cases/views.py     : 6 cursor.execute() calls  (counts + filters)
+
+N+1 query hotspots identified: 3
+  - CaseRequestSerializer.get_unread_messages_count  (1 query per row)
+  - CaseRequestSerializer.get_case_id               (1 query per row)
+  - CaseRequestSerializer.get_has_new_updates        (2 queries per row)
+  → 10-row list view: ~40 extra queries on these fields alone
+
+Atomicity gaps: 2
+  - CitizenRegistrationSerializer.create: User saved before profile;
+    profile failure leaves orphaned User row.
+  - LawyerRegistrationSerializer.create: same pattern.
+
+No repository abstraction: all ORM access in views / serializers
+No factory pattern: object creation spread across 4 files
+No signal/observer: notification side-effects hardcoded in view actions
+No strategy pattern: fee logic not present (to be added)
+No singleton: Django settings accessed directly everywhere
+
+========================================================================
+SUMMARY TABLE — Before
+========================================================================
+File                     Lines  Responsibilities  Avg CC  Grade
+------------------------------------------------------------------------
+cases/views.py            346        6             7.8     B/C
+messaging/views.py        243        5             7.4     B/C
+users/views.py            248        5             6.4     B
+cases/serializers.py      127        5             9.0     C
+users/serializers.py      217        6             8.3     B/C
+------------------------------------------------------------------------
+TOTAL                    1181       27             7.8     B/C
+========================================================================
