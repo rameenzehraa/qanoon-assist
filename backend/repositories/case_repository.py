@@ -1,8 +1,11 @@
+from decimal import Decimal
+
 from django.utils import timezone
 from django.db.models import Prefetch
 
 from cases.models import CaseRequest, Case, Hearing, CaseUpdate
 from cases.signals import case_status_changed, case_assigned, case_closed
+from strategies import FeeStrategyFactory
 
 
 class CaseRepository:
@@ -218,3 +221,15 @@ class CaseRepository:
             any(h.created_at > since for h in case.hearings.all())
             or any(u.created_at > since for u in case.updates.all())
         )
+
+    # ── Fee calculation ──────────────────────────────────────────────────────
+
+    def calculate_fee(self, case) -> Decimal:
+        """
+        Return the calculated fee for `case` using the lawyer's chosen
+        FeeStrategy.  Delegates entirely to the strategy; raises ValueError
+        if the stored strategy_type is unrecognised.
+        """
+        strategy_type = case.case_request.lawyer.fee_strategy_type
+        strategy = FeeStrategyFactory.get(strategy_type)
+        return strategy.calculate(case)

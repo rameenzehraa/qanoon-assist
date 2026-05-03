@@ -77,6 +77,21 @@ class LawyerProfile(models.Model):
         blank=True
     )
     
+    # Fee strategy fields
+    FEE_STRATEGY_CHOICES = (
+        ('hourly', 'Hourly Rate'),
+        ('flat', 'Flat Fee'),
+        ('contingency', 'Contingency'),
+    )
+    fee_strategy_type = models.CharField(
+        max_length=15,
+        choices=FEE_STRATEGY_CHOICES,
+        default='flat',
+    )
+    hourly_rate = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    flat_fee = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    contingency_percentage = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+
     # Additional fields for verification
     verification_date = models.DateTimeField(null=True, blank=True)
     verified_by = models.ForeignKey(
