@@ -55,7 +55,7 @@ class CaseRequestViewSet(viewsets.ModelViewSet):
     def accept(self, request, pk=None):
         case_request = self.get_object()
         message = request.data.get('message', 'Request accepted')
-        case_request = case_repo.accept_request(case_request, message=message)
+        case_request = case_repo.accept_request(case_request, message=message, performed_by=request.user)
         return Response({
             'message': 'Case request accepted',
             'data': self.get_serializer(case_request).data
@@ -65,7 +65,7 @@ class CaseRequestViewSet(viewsets.ModelViewSet):
     def reject(self, request, pk=None):
         case_request = self.get_object()
         message = request.data.get('message', 'Request rejected')
-        case_request = case_repo.reject_request(case_request, message=message)
+        case_request = case_repo.reject_request(case_request, message=message, performed_by=request.user)
         return Response({
             'message': 'Case request rejected',
             'data': self.get_serializer(case_request).data
@@ -74,8 +74,8 @@ class CaseRequestViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def start_progress(self, request, pk=None):
         case_request = self.get_object()
-        case_repo.mark_in_progress(case_request)
-        case_repo.create_case_from_request(case_request)
+        case_repo.mark_in_progress(case_request, performed_by=request.user)
+        case_repo.create_case_from_request(case_request, performed_by=request.user)
         return Response({
             'message': 'Case status updated to in progress',
             'data': self.get_serializer(case_request).data
@@ -84,7 +84,7 @@ class CaseRequestViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def complete(self, request, pk=None):
         case_request = self.get_object()
-        case_repo.mark_complete(case_request)
+        case_repo.mark_complete(case_request, performed_by=request.user)
         return Response({
             'message': 'Case marked as completed',
             'data': self.get_serializer(case_request).data

@@ -2,6 +2,7 @@ from django.utils import timezone
 from django.db.models import Prefetch
 
 from cases.models import CaseRequest, Case, Hearing, CaseUpdate
+from cases.signals import case_status_changed, case_assigned, case_closed
 
 
 class CaseRepository:
@@ -63,28 +64,57 @@ class CaseRepository:
 
     # ── CaseRequest mutations ────────────────────────────────────────────────
 
-    def accept_request(self, case_request, message='Request accepted'):
+    def accept_request(self, case_request, message='Request accepted', performed_by=None):
         case_request.status = 'accepted'
         case_request.response_date = timezone.now()
         case_request.response_message = message
         case_request.save(update_fields=['status', 'response_date', 'response_message'])
+        case_status_changed.send(
+            sender=CaseRequest,
+            case_request=case_request,
+            new_status='accepted',
+            performed_by=performed_by,
+        )
         return case_request
 
-    def reject_request(self, case_request, message='Request rejected'):
+    def reject_request(self, case_request, message='Request rejected', performed_by=None):
         case_request.status = 'rejected'
         case_request.response_date = timezone.now()
         case_request.response_message = message
         case_request.save(update_fields=['status', 'response_date', 'response_message'])
+        case_status_changed.send(
+            sender=CaseRequest,
+            case_request=case_request,
+            new_status='rejected',
+            performed_by=performed_by,
+        )
         return case_request
 
-    def mark_in_progress(self, case_request):
+    def mark_in_progress(self, case_request, performed_by=None):
         case_request.status = 'in_progress'
         case_request.save(update_fields=['status'])
+        case_status_changed.send(
+            sender=CaseRequest,
+            case_request=case_request,
+            new_status='in_progress',
+            performed_by=performed_by,
+        )
         return case_request
 
-    def mark_complete(self, case_request):
+    def mark_complete(self, case_request, performed_by=None):
         case_request.status = 'completed'
         case_request.save(update_fields=['status'])
+        case_status_changed.send(
+            sender=CaseRequest,
+            case_request=case_request,
+            new_status='completed',
+            performed_by=performed_by,
+        )
+        case_closed.send(
+            sender=CaseRequest,
+            case_request=case_request,
+            performed_by=performed_by,
+        )
         return case_request
 
     def mark_viewed(self, case_request):
@@ -112,7 +142,7 @@ class CaseRepository:
         """Return the linked Case for a CaseRequest, or None."""
         return Case.objects.filter(case_request=case_request).first()
 
-    def create_case_from_request(self, case_request):
+    def create_case_from_request(self, case_request, performed_by=None):
         """
         Create and return a Case from a CaseRequest.
         No-ops if a Case already exists for this request.
@@ -121,7 +151,7 @@ class CaseRepository:
         if existing:
             return existing
 
-        return Case.objects.create(
+        new_case = Case.objects.create(
             citizen=case_request.requester,
             lawyer=case_request.lawyer,
             case_request=case_request,
@@ -129,6 +159,13 @@ class CaseRepository:
             description=case_request.description,
             status='active',
         )
+        case_assigned.send(
+            sender=CaseRequest,
+            case_request=case_request,
+            case=new_case,
+            performed_by=performed_by,
+        )
+        return new_case
 
     def get_cases_for_citizen(self, citizen_profile):
         return Case.objects.filter(citizen=citizen_profile).order_by('-filing_date')

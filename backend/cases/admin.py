@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import CaseRequest, Case, Hearing, CaseUpdate
+from .models import CaseRequest, Case, Hearing, CaseUpdate, Notification, CaseAuditLog
 
 @admin.register(CaseRequest)
 class CaseRequestAdmin(admin.ModelAdmin):
@@ -25,3 +25,17 @@ class CaseUpdateAdmin(admin.ModelAdmin):
     list_filter = ['created_at']
     search_fields = ['case__title', 'case__case_number', 'title']
     readonly_fields = ['created_at']
+
+@admin.register(Notification)
+class NotificationAdmin(admin.ModelAdmin):
+    list_display = ['user', 'message', 'is_read', 'related_case', 'created_at']
+    list_filter = ['is_read', 'created_at']
+    search_fields = ['user__username', 'message']
+    readonly_fields = ['created_at']
+
+@admin.register(CaseAuditLog)
+class CaseAuditLogAdmin(admin.ModelAdmin):
+    list_display = ['case_request', 'action', 'performed_by', 'timestamp']
+    list_filter = ['action', 'timestamp']
+    search_fields = ['case_request__case_title', 'action', 'performed_by__username']
+    readonly_fields = ['timestamp']
