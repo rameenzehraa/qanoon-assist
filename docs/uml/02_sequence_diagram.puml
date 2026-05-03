@@ -1,0 +1,80 @@
+@startuml 02_sequence_diagram
+title Qanoon Assist — Case Acceptance Flow (Observer Pattern in action)
+
+skinparam sequenceMessageAlign center
+skinparam sequenceParticipantBorderColor #555555
+skinparam sequenceLifeLineBorderColor #888888
+skinparam noteBorderColor #AAAAAA
+skinparam responseMessageBelowArrow true
+
+actor       "Lawyer (HTTP Client)"  as Client
+participant "CaseRequestViewSet\n.accept()"        as View       #LightBlue
+participant "CaseRepository\n.accept_request()"   as Repo       #LightGreen
+participant "case_status_changed\n(Django Signal)" as Signal     #LightYellow
+participant "NotificationObserver\n.on_status_changed()" as NO  #FFD580
+participant "NotificationService\n.dispatch()"    as NS         #FFB347
+participant "AuditLogObserver\n.on_status_changed()" as AO      #FFD580
+database    "PostgreSQL"                           as DB         #EFEFEF
+
+== HTTP Request ==
+
+Client -> View : POST /api/cases/requests/{id}/accept/\n{ "message": "Accepted." }
+activate View
+
+View -> View : get_object() → CaseRequest
+View -> Repo : accept_request(\n  case_request,\n  message="Accepted.",\n  performed_by=request.user\n)
+activate Repo
+
+== Persistence ==
+
+Repo -> DB : UPDATE case_requests\nSET status='accepted',\n    response_date=NOW(),\n    response_message='Accepted.'\nWHERE id=<id>
+DB --> Repo : OK
+
+== Signal Dispatch ==
+
+Repo -> Signal : case_status_changed.send(\n  sender=CaseRequest,\n  case_request=<obj>,\n  new_status='accepted',\n  performed_by=<user>\n)
+activate Signal
+
+note over Signal
+  Django calls all connected
+  receivers synchronously,
+  in registration order.
+end note
+
+== Notification Observer ==
+
+Signal -> NO : on_status_changed(\n  case_request, new_status='accepted',\n  performed_by\n)
+activate NO
+
+NO -> NS : NotificationService().dispatch(\n  user=case_request.requester.user,\n  message="Your case request\n  '...' has been accepted.",\n  related_case=case_request\n)
+activate NS
+
+NS -> DB : INSERT INTO notifications\n(user_id, message, is_read=False,\n related_case_id, created_at)
+DB --> NS : Notification row
+
+NS --> NO : Notification instance
+deactivate NS
+deactivate NO
+
+== Audit Log Observer ==
+
+Signal -> AO : on_status_changed(\n  case_request, new_status='accepted',\n  performed_by\n)
+activate AO
+
+AO -> DB : INSERT INTO case_audit_logs\n(case_request_id,\n action='status_changed_to_accepted',\n performed_by_id,\n metadata={'new_status': 'accepted'},\n timestamp=NOW())
+DB --> AO : CaseAuditLog row
+
+deactivate AO
+deactivate Signal
+
+== HTTP Response ==
+
+Repo --> View : updated CaseRequest
+deactivate Repo
+
+View -> View : CaseRequestSerializer(case_request)
+
+View --> Client : HTTP 200 OK\n{\n  "message": "Case request accepted",\n  "data": { ...serialized CaseRequest... }\n}
+deactivate View
+
+@enduml

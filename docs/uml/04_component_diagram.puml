@@ -1,0 +1,135 @@
+@startuml 04_component_diagram
+title Qanoon Assist — Component & Layered Architecture Diagram
+
+skinparam componentStyle rectangle
+skinparam packageStyle Rectangle
+skinparam linetype ortho
+skinparam arrowColor #444444
+
+' ══════════════════════════════════════════════════════════════
+' CLIENT
+' ══════════════════════════════════════════════════════════════
+package "Client" #F2F3F4 {
+    [React Frontend\n(Next.js)] as FE
+    [JWT Token] as JWT
+}
+
+' ══════════════════════════════════════════════════════════════
+' PRESENTATION LAYER  (Django REST Framework Views)
+' ══════════════════════════════════════════════════════════════
+package "Presentation Layer" #D6EAF8 {
+    [CaseRequestViewSet] as VCase
+    [CaseViewSet\nHearingViewSet\nCaseUpdateViewSet] as VCaseExtra
+    [LawyerViewSet\nLawyerSpecialtyViewSet] as VLawyer
+    [CitizenRegistrationView\nLawyerRegistrationView] as VReg
+    [MessagingViewSet] as VMsg
+}
+
+' ══════════════════════════════════════════════════════════════
+' FACTORY LAYER
+' ══════════════════════════════════════════════════════════════
+package "Factory Layer" #D5F5E3 {
+    [UserFactory\n_create_citizen()\n_create_lawyer()\n_create_admin()] as Factory
+    note bottom of Factory
+        @transaction.atomic per creator
+        — rolls back on profile failure
+    end note
+}
+
+' ══════════════════════════════════════════════════════════════
+' REPOSITORY LAYER
+' ══════════════════════════════════════════════════════════════
+package "Repository Layer" #FCF3CF {
+    [UserRepository] as RepoUser
+    [CaseRepository] as RepoCase
+    [MessageRepository] as RepoMsg
+}
+
+' ══════════════════════════════════════════════════════════════
+' STRATEGY LAYER
+' ══════════════════════════════════════════════════════════════
+package "Strategy Layer" #F5EEF8 {
+    [FeeStrategyFactory] as StratFactory
+    [HourlyFeeStrategy] as StratHourly
+    [FlatFeeStrategy] as StratFlat
+    [ContingencyFeeStrategy] as StratContingency
+}
+
+' ══════════════════════════════════════════════════════════════
+' OBSERVER / SIGNAL LAYER
+' ══════════════════════════════════════════════════════════════
+package "Observer / Signal Layer" #FEF9E7 {
+    [case_status_changed\ncase_assigned\ncase_closed\n(Django Signals)] as Signals
+    [NotificationObserver] as ObsNotif
+    [AuditLogObserver] as ObsAudit
+}
+
+' ══════════════════════════════════════════════════════════════
+' SINGLETON / UTILITY LAYER
+' ══════════════════════════════════════════════════════════════
+package "Singleton / Utility Layer" #FDEDEC {
+    [NotificationService\n<<Singleton>>] as NS
+    [ConfigManager\n<<Singleton>>] as CM
+}
+
+' ══════════════════════════════════════════════════════════════
+' DATA LAYER  (Django ORM Models)
+' ══════════════════════════════════════════════════════════════
+package "Data Layer (Django ORM)" #EAECEE {
+    database "PostgreSQL" as DB {
+        [User / CitizenProfile\nLawyerProfile / AdminProfile] as MUser
+        [CaseRequest / Case\nHearing / CaseUpdate] as MCase
+        [Notification\nCaseAuditLog] as MNotif
+        [Message] as MMsg
+    }
+}
+
+' ══════════════════════════════════════════════════════════════
+' CONNECTIONS
+' ══════════════════════════════════════════════════════════════
+
+' Client → Presentation
+FE   --> VCase      : REST / JWT
+FE   --> VReg       : REST
+FE   --> VLawyer    : REST
+FE   --> VMsg       : REST
+JWT  ..> FE         : auth header
+
+' Presentation → Factory
+VReg --> Factory    : create('citizen'|'lawyer')
+
+' Presentation → Repository
+VCase      --> RepoCase  : accept / reject / list...
+VCaseExtra --> RepoCase  : hearings / updates
+VLawyer    --> RepoUser  : verify / list
+VMsg       --> RepoMsg   : messages
+
+' Repository → Strategy
+RepoCase --> StratFactory   : FeeStrategyFactory.get()
+StratFactory --> StratHourly
+StratFactory --> StratFlat
+StratFactory --> StratContingency
+
+' Repository → Signals
+RepoCase --> Signals : .send() on mutations
+
+' Signals → Observers
+Signals --> ObsNotif : on_status_changed\non_case_assigned\non_case_closed
+Signals --> ObsAudit : on_status_changed\non_case_assigned\non_case_closed
+
+' Observers → Singletons / Models
+ObsNotif --> NS       : .dispatch()
+ObsAudit --> MNotif   : CaseAuditLog.objects.create()
+NS       --> MNotif   : Notification.objects.create()
+
+' Repository / Factory → Data Layer
+RepoUser   --> MUser  : ORM queries
+RepoCase   --> MCase  : ORM queries
+RepoMsg    --> MMsg   : ORM queries
+Factory    --> MUser  : create_user() + profile.create()
+
+' Config
+CM ..> VReg     : (available)\ncached settings
+CM ..> RepoCase : (available)\ncached settings
+
+@enduml

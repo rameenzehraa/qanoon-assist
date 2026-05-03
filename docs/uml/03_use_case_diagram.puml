@@ -1,0 +1,116 @@
+@startuml 03_use_case_diagram
+title Qanoon Assist — Use Case Diagram
+
+left to right direction
+skinparam actorStyle awesome
+skinparam usecaseBorderColor #555555
+skinparam usecaseBackgroundColor #FDFEFE
+skinparam packageStyle Rectangle
+
+actor Citizen as C
+actor Lawyer  as L
+actor Admin   as A
+
+' ──────────────────────────────────────────
+rectangle "Authentication" {
+    usecase "Register Account"    as UC_REG
+    usecase "Log In (JWT)"        as UC_LOGIN
+    usecase "View Own Profile"    as UC_PROFILE
+}
+
+rectangle "Lawyer Discovery" {
+    usecase "Browse Verified Lawyers"   as UC_BROWSE
+    usecase "Filter by City / Specialty" as UC_FILTER
+    usecase "View Lawyer Profile"        as UC_VIEW_LAWYER
+}
+
+rectangle "Case Requests" {
+    usecase "Submit Case Request"      as UC_SUBMIT
+    usecase "View My Case Requests"    as UC_MY_REQ
+    usecase "Mark Request as Viewed"   as UC_VIEWED
+    usecase "Accept Case Request"      as UC_ACCEPT
+    usecase "Reject Case Request"      as UC_REJECT
+    usecase "Start Case Progress"      as UC_START
+    usecase "Mark Case Complete"       as UC_COMPLETE
+}
+
+rectangle "Active Cases" {
+    usecase "View My Cases"           as UC_CASES
+    usecase "Schedule Hearing"        as UC_HEARING
+    usecase "Add Case Update"         as UC_UPDATE
+    usecase "Calculate Case Fee"      as UC_FEE
+}
+
+rectangle "Messaging" {
+    usecase "Send Message on Case"    as UC_MSG_SEND
+    usecase "Read Messages"           as UC_MSG_READ
+    usecase "View Unread Count"       as UC_MSG_COUNT
+}
+
+rectangle "Notifications" {
+    usecase "Receive Notifications"   as UC_NOTIF
+    usecase "Mark Notifications Read" as UC_NOTIF_READ
+}
+
+rectangle "Administration" {
+    usecase "View Unverified Lawyers" as UC_UNVERIFIED
+    usecase "Verify Lawyer Account"   as UC_VERIFY
+    usecase "Reject Lawyer Account"   as UC_REJECT_L
+    usecase "View All Cases"          as UC_ALL_CASES
+    usecase "View All Hearings"       as UC_ALL_HEAR
+    usecase "View All Case Requests"  as UC_ALL_REQ
+}
+
+' ── Citizen ──
+C --> UC_REG
+C --> UC_LOGIN
+C --> UC_PROFILE
+C --> UC_BROWSE
+C --> UC_FILTER
+C --> UC_VIEW_LAWYER
+C --> UC_SUBMIT
+C --> UC_MY_REQ
+C --> UC_VIEWED
+C --> UC_CASES
+C --> UC_MSG_SEND
+C --> UC_MSG_READ
+C --> UC_MSG_COUNT
+C --> UC_NOTIF
+C --> UC_NOTIF_READ
+
+' ── Lawyer ──
+L --> UC_LOGIN
+L --> UC_PROFILE
+L --> UC_MY_REQ
+L --> UC_ACCEPT
+L --> UC_REJECT
+L --> UC_START
+L --> UC_COMPLETE
+L --> UC_CASES
+L --> UC_HEARING
+L --> UC_UPDATE
+L --> UC_FEE
+L --> UC_MSG_SEND
+L --> UC_MSG_READ
+L --> UC_NOTIF
+L --> UC_NOTIF_READ
+
+' ── Admin ──
+A --> UC_LOGIN
+A --> UC_UNVERIFIED
+A --> UC_VERIFY
+A --> UC_REJECT_L
+A --> UC_ALL_CASES
+A --> UC_ALL_HEAR
+A --> UC_ALL_REQ
+
+' ── Extends / Includes ──
+UC_SUBMIT    ..> UC_LOGIN    : <<include>>
+UC_ACCEPT    ..> UC_LOGIN    : <<include>>
+UC_VERIFY    ..> UC_LOGIN    : <<include>>
+UC_FEE       ..> UC_START    : <<extend>>
+UC_NOTIF     ..> UC_ACCEPT   : <<extend>>
+UC_NOTIF     ..> UC_REJECT   : <<extend>>
+UC_NOTIF     ..> UC_COMPLETE : <<extend>>
+
+@enduml

@@ -1,0 +1,203 @@
+@startuml 01_class_diagram
+title Qanoon Assist — Design Patterns Class Diagram
+
+skinparam classAttributeIconSize 0
+skinparam classFontStyle Bold
+skinparam packageStyle Rectangle
+skinparam linetype ortho
+hide empty members
+
+' ══════════════════════════════════════════════════════════════
+' REPOSITORY PATTERN
+' ══════════════════════════════════════════════════════════════
+package "Repository Pattern" #E8F4FD {
+
+    class UserRepository {
+        + get_by_id(user_id) : User
+        + get_lawyers_by_city(city, specialty_id) : QuerySet
+        + get_unverified_lawyers() : QuerySet
+        + get_lawyer_by_id(pk) : LawyerProfile
+        + get_lawyer_stats_by_city() : dict
+        + verify_lawyer(lawyer, verified_by_user) : LawyerProfile
+        + delete_lawyer_account(lawyer) : void
+    }
+
+    class CaseRepository {
+        + get_requests_for_citizen(citizen_profile) : QuerySet
+        + get_requests_for_lawyer(lawyer_profile) : QuerySet
+        + get_request_stats(profile, role) : dict
+        + accept_request(case_request, message, performed_by) : CaseRequest
+        + reject_request(case_request, message, performed_by) : CaseRequest
+        + mark_in_progress(case_request, performed_by) : CaseRequest
+        + mark_complete(case_request, performed_by) : CaseRequest
+        + create_case_from_request(case_request, performed_by) : Case
+        + get_cases_for_citizen(citizen_profile) : QuerySet
+        + get_cases_for_lawyer(lawyer_profile) : QuerySet
+        + calculate_fee(case) : Decimal
+        + has_new_updates(case_request, since) : bool
+    }
+
+    class MessageRepository {
+        + get_messages_for_case(case_request) : QuerySet
+        + mark_as_read(case_request, user) : int
+        + get_unread_count(user) : int
+        + get_stats_for_user(user) : dict
+        + get_all_messages() : QuerySet
+        + get_unread_count_for_case(case_request, user) : int
+    }
+}
+
+' ══════════════════════════════════════════════════════════════
+' FACTORY PATTERN
+' ══════════════════════════════════════════════════════════════
+package "Factory Pattern" #EDF7ED {
+
+    class UserFactory {
+        + create(role : str, **data) : User
+        - _create_citizen(**data) : User
+        - _create_lawyer(**data) : User
+        - _create_admin(**data) : User
+    }
+
+    note right of UserFactory
+        Each private creator is wrapped
+        in @transaction.atomic — a failed
+        profile creation rolls back the
+        User row too.
+    end note
+}
+
+' ══════════════════════════════════════════════════════════════
+' OBSERVER PATTERN
+' ══════════════════════════════════════════════════════════════
+package "Observer Pattern" #FEF9E7 {
+
+    class "case_status_changed" as SigStatus <<Signal>> {
+        kwargs: case_request, new_status, performed_by
+    }
+    class "case_assigned" as SigAssigned <<Signal>> {
+        kwargs: case_request, case, performed_by
+    }
+    class "case_closed" as SigClosed <<Signal>> {
+        kwargs: case_request, performed_by
+    }
+
+    class NotificationObserver {
+        {static} on_status_changed(sender, **kwargs) : void
+        {static} on_case_assigned(sender, **kwargs) : void
+        {static} on_case_closed(sender, **kwargs) : void
+    }
+
+    class AuditLogObserver {
+        {static} on_status_changed(sender, **kwargs) : void
+        {static} on_case_assigned(sender, **kwargs) : void
+        {static} on_case_closed(sender, **kwargs) : void
+    }
+
+    class Notification {
+        + user : FK(User)
+        + message : TextField
+        + is_read : BooleanField = False
+        + related_case : FK(CaseRequest, null)
+        + created_at : DateTimeField
+    }
+
+    class CaseAuditLog {
+        + case_request : FK(CaseRequest)
+        + action : CharField
+        + performed_by : FK(User, null)
+        + timestamp : DateTimeField
+        + metadata : JSONField
+    }
+
+    SigStatus ..> NotificationObserver : fires
+    SigStatus ..> AuditLogObserver    : fires
+    SigAssigned ..> NotificationObserver : fires
+    SigAssigned ..> AuditLogObserver    : fires
+    SigClosed ..> NotificationObserver  : fires
+    SigClosed ..> AuditLogObserver      : fires
+
+    NotificationObserver ..> Notification  : creates via\nNotificationService
+    AuditLogObserver     ..> CaseAuditLog  : creates
+}
+
+' ══════════════════════════════════════════════════════════════
+' STRATEGY PATTERN
+' ══════════════════════════════════════════════════════════════
+package "Strategy Pattern" #F5EEF8 {
+
+    abstract class FeeStrategy <<abstract>> {
+        {abstract} + calculate(case) : Decimal
+    }
+
+    class HourlyFeeStrategy {
+        + calculate(case) : Decimal
+        -- rate × estimated_hours --
+    }
+
+    class FlatFeeStrategy {
+        + calculate(case) : Decimal
+        -- fixed flat_fee amount --
+    }
+
+    class ContingencyFeeStrategy {
+        + calculate(case) : Decimal
+        -- (percentage / 100) × claim_value --
+    }
+
+    class FeeStrategyFactory {
+        {static} - _strategies : dict
+        {static} + get(strategy_type : str) : FeeStrategy
+    }
+
+    FeeStrategy <|-- HourlyFeeStrategy
+    FeeStrategy <|-- FlatFeeStrategy
+    FeeStrategy <|-- ContingencyFeeStrategy
+    FeeStrategyFactory ..> FeeStrategy : instantiates
+}
+
+' ══════════════════════════════════════════════════════════════
+' SINGLETON PATTERN
+' ══════════════════════════════════════════════════════════════
+package "Singleton Pattern" #FDEDEC {
+
+    class ConfigManager <<Singleton>> {
+        {static} - _instance : ConfigManager
+        {static} - _lock : Lock
+        - _cache : dict
+        {static} + reset() : void
+        + get(key : str) : Any
+        - {static} _load() : dict
+        .. cached keys ..
+        DEBUG, ALLOWED_HOSTS
+        DB_NAME
+        JWT_ACCESS_MINUTES
+        JWT_REFRESH_DAYS
+    }
+
+    class NotificationService <<Singleton>> {
+        {static} - _instance : NotificationService
+        {static} - _lock : Lock
+        {static} + reset() : void
+        + dispatch(user, message, related_case) : Notification
+        + get_unread_count(user) : int
+        + mark_all_read(user) : int
+    }
+
+    ConfigManager    : __new__() guards single instance
+    NotificationService : __new__() guards single instance
+}
+
+' ══════════════════════════════════════════════════════════════
+' CROSS-PATTERN RELATIONSHIPS
+' ══════════════════════════════════════════════════════════════
+
+CaseRepository ..> SigStatus    : sends
+CaseRepository ..> SigAssigned  : sends
+CaseRepository ..> SigClosed    : sends
+CaseRepository ..> FeeStrategyFactory : calls get()
+
+NotificationObserver ..> NotificationService : calls dispatch()
+NotificationService  ..> Notification : creates
+
+@enduml
