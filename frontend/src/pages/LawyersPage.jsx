@@ -246,7 +246,13 @@ function LawyersPage() {
                                                     height: '100%',
                                                     objectFit: 'cover'
                                                 }}
-                                                image={lawyer.profile_picture_url || '/default-avatar.png'}
+                                                image={
+                                    lawyer.profile_picture_url
+                                        ? lawyer.profile_picture_url.startsWith('http')
+                                            ? lawyer.profile_picture_url
+                                            : `https://web-production-f54a9.up.railway.app${lawyer.profile_picture_url}`
+                                        : '/default-avatar.png'
+                                }
                                             />
                                         </Box>
 

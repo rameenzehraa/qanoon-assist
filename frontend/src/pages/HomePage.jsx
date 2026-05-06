@@ -2,9 +2,11 @@ import React from 'react';
 import { Container, Typography, Button, Box, Grid, Card, CardContent, Link, IconButton } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { Gavel, People, Shield, Search, Security, Support, MenuBook, TrendingUp, Facebook, Twitter, LinkedIn, Email, CheckCircle, Bolt, ArrowRight } from '@mui/icons-material';
+import { useAuth } from '../contexts/AuthContext';
 
 function HomePage() {
     const navigate = useNavigate();
+    const { isAuthenticated } = useAuth();
 
     return (
         <Box
@@ -163,10 +165,10 @@ function HomePage() {
                                     },
                                     transition: 'all 0.3s ease'
                                 }}
-                                onClick={() => navigate('/register')}
+                                onClick={() => navigate(isAuthenticated ? '/dashboard' : '/register')}
                                 endIcon={<ArrowRight />}
                             >
-                                Get Started Free
+                                {isAuthenticated ? 'Go to Dashboard' : 'Get Started Free'}
                             </Button>
                         </Box>
 
@@ -550,10 +552,10 @@ function HomePage() {
                                 },
                                 transition: 'all 0.3s ease'
                             }}
-                            onClick={() => navigate('/register')}
+                            onClick={() => navigate(isAuthenticated ? '/dashboard' : '/register')}
                             endIcon={<ArrowRight />}
                         >
-                            Start Your Journey
+                            {isAuthenticated ? 'Go to Dashboard' : 'Start Your Journey'}
                         </Button>
                     </Box>
                 </Container>
