@@ -475,7 +475,7 @@ Net reduction: ~42 queries per list response → **2** (one base query + one `IN
 All UML diagrams are in PlantUML source format under `docs/uml/` and can be rendered via the PlantUML online server or the VS Code PlantUML extension.
 
 ### 5.1 Class Diagram — 
-(./uml/01_class_diagram.png)
+![Class Diagram](./uml/01_class_diagram.png)
 
 A multi-package class diagram showing all five patterns in a single view. Five colour-coded packages contain:
 - **Repository Pattern** — `UserRepository`, `CaseRepository`, `MessageRepository` with full method signatures
@@ -487,17 +487,17 @@ A multi-package class diagram showing all five patterns in a single view. Five c
 Cross-package dependency arrows show `CaseRepository` sending signals and calling `FeeStrategyFactory`; `NotificationObserver` calling `NotificationService`; `NotificationService` creating `Notification` rows.
 
 ### 5.2 Sequence Diagram —
-(./uml/02_sequence_diagram.png)
+![Sequence Diagram](./uml/02_sequence_diagram.png)
 
 Documents the complete case acceptance flow across seven lifelines: HTTP client → `CaseRequestViewSet.accept()` → `CaseRepository.accept_request()` → PostgreSQL UPDATE → `case_status_changed.send()` → `NotificationObserver.on_status_changed()` → `NotificationService.dispatch()` → INSERT notification → `AuditLogObserver.on_status_changed()` → INSERT audit log → HTTP 200 response. The diagram makes the Observer pattern's runtime behaviour explicit, showing that both side-effects are synchronous and independent.
 
 ### 5.3 Use Case Diagram — 
-(./uml/03_use_case_diagram.png)
+![Use Case Diagram](./uml/03_use_case_diagram.png)
 
 Depicts three actors (Citizen, Lawyer, Admin) and their use cases across six functional groupings: Authentication, Lawyer Discovery, Case Requests, Active Cases, Messaging, and Administration. `<<include>>` dependencies show that case submission and lawyer verification require prior authentication. `<<extend>>` relationships show that notifications extend the accept, reject, and complete use cases.
 
 ### 5.4 Component Diagram — 
-(./uml/04_component_diagram.png)
+![Component Diagram](./uml/04_component_diagram.png)
 
 
 Shows seven vertical layers of the architecture with annotated dependency arrows:
